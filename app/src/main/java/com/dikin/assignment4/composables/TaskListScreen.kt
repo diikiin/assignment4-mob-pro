@@ -3,6 +3,7 @@ package com.dikin.assignment4.composables
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -13,9 +14,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -41,8 +48,9 @@ import com.dikin.assignment4.ui.theme.Assignment4Theme
 import com.dikin.assignment4.viewmodel.TaskViewModel
 
 @Composable
-fun TaskListScreen(taskViewModel: TaskViewModel = viewModel(), modifier: Modifier = Modifier) {
+fun TaskListScreen(modifier: Modifier = Modifier, taskViewModel: TaskViewModel = viewModel()) {
     val tasks by taskViewModel.allTasks.observeAsState(emptyList())
+    var selectedTask by remember { mutableStateOf<Task?>(null) }
     var showDialog by remember { mutableStateOf(false) }
 
     Column(
@@ -58,7 +66,10 @@ fun TaskListScreen(taskViewModel: TaskViewModel = viewModel(), modifier: Modifie
         )
 
         Button(
-            onClick = { showDialog = true },
+            onClick = {
+                showDialog = true
+                selectedTask = null
+            },
             modifier = Modifier.align(Alignment.CenterHorizontally)
         ) {
             Text("Add Task")
@@ -67,15 +78,32 @@ fun TaskListScreen(taskViewModel: TaskViewModel = viewModel(), modifier: Modifie
 
         LazyColumn {
             items(tasks) { task ->
-                TaskItem(task)
+                TaskItem(
+                    task = task,
+                    onDone = {
+                        taskViewModel.update(Task(task.id, task.title, task.description, true))
+                    },
+                    onUpdate = {
+                        selectedTask = it
+                        showDialog = true
+                    },
+                    onDelete = {
+                        taskViewModel.delete(it)
+                    }
+                )
             }
         }
     }
 
     if (showDialog) {
-        AddTaskDialog(
-            onAddTask = { title, description ->
-                taskViewModel.create(title, description)
+        AddOrUpdateTaskDialog(
+            task = selectedTask,
+            onCreate = { task ->
+                taskViewModel.create(task)
+                showDialog = false
+            },
+            onUpdate = { task ->
+                taskViewModel.update(task)
                 showDialog = false
             },
             onDismiss = { showDialog = false }
@@ -84,8 +112,14 @@ fun TaskListScreen(taskViewModel: TaskViewModel = viewModel(), modifier: Modifie
 }
 
 @Composable
-fun TaskItem(task: Task) {
+fun TaskItem(
+    task: Task,
+    onDone: (Task) -> Unit,
+    onUpdate: (Task) -> Unit,
+    onDelete: (Task) -> Unit
+) {
     var showDialog by remember { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
 
     Card(
         shape = RoundedCornerShape(8.dp),
@@ -95,15 +129,53 @@ fun TaskItem(task: Task) {
             .fillMaxWidth()
             .clickable { showDialog = true }
     ) {
-        Column(
+        Row(
             modifier = Modifier
-                .padding(16.dp)
+                .fillMaxWidth()
+                .padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = task.title,
-                fontSize = 20.sp,
-                color = Color.Black,
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = task.title,
+                    fontSize = 20.sp,
+                    color = Color.Black,
+                )
+            }
+            Box {
+                IconButton(onClick = { expanded = true }) {
+                    Icon(Icons.Default.MoreVert, contentDescription = "Settings")
+                }
+
+                DropdownMenu(
+                    expanded = expanded,
+                    onDismissRequest = { expanded = false }
+                ) {
+                    if (!task.isDone) {
+                        DropdownMenuItem(
+                            onClick = {
+                                expanded = false
+                                onDone(task)
+                            },
+                            text = { Text("Done") }
+                        )
+                    }
+                    DropdownMenuItem(
+                        onClick = {
+                            expanded = false
+                            onUpdate(task)
+                        },
+                        text = { Text("Update") }
+                    )
+                    DropdownMenuItem(
+                        onClick = {
+                            expanded = false
+                            onDelete(task)
+                        },
+                        text = { Text("Delete") }
+                    )
+                }
+            }
         }
     }
 
@@ -135,9 +207,14 @@ fun TaskDetailDialog(task: Task, onDismiss: () -> Unit) {
 }
 
 @Composable
-fun AddTaskDialog(onAddTask: (String, String) -> Unit, onDismiss: () -> Unit) {
-    var taskTitle by remember { mutableStateOf("") }
-    var taskDescription by remember { mutableStateOf("") }
+fun AddOrUpdateTaskDialog(
+    task: Task?,
+    onCreate: (Task) -> Unit,
+    onUpdate: (Task) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var taskTitle by remember { mutableStateOf(task?.title ?: "") }
+    var taskDescription by remember { mutableStateOf(task?.description ?: "") }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -146,7 +223,7 @@ fun AddTaskDialog(onAddTask: (String, String) -> Unit, onDismiss: () -> Unit) {
             modifier = Modifier.padding(16.dp)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
-                Text(text = "Add New Task", fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                Text(text = "Add/Update Task", fontSize = 18.sp, fontWeight = FontWeight.Bold)
 
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -181,11 +258,15 @@ fun AddTaskDialog(onAddTask: (String, String) -> Unit, onDismiss: () -> Unit) {
                     TextButton(
                         onClick = {
                             if (taskTitle.isNotBlank() && taskDescription.isNotBlank()) {
-                                onAddTask(taskTitle, taskDescription)
+                                if (task != null) {
+                                    onUpdate(Task(task.id, taskTitle, taskDescription, task.isDone))
+                                } else {
+                                    onCreate(Task(title = taskTitle, description = taskDescription))
+                                }
                             }
                         }
                     ) {
-                        Text("Add")
+                        Text("Save")
                     }
                 }
             }
