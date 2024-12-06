@@ -66,7 +66,7 @@ fun ProductListScreen(
                 modifier = modifier
             ) {
                 Text(
-                    text = "Tasks List",
+                    text = "Products List",
                     fontSize = 32.sp,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
@@ -81,7 +81,7 @@ fun ProductListScreen(
                     },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    Text("Add Task")
+                    Text("Add Product")
                 }
                 Spacer(modifier = Modifier.height(8.dp))
 
@@ -108,8 +108,8 @@ fun ProductListScreen(
                         productViewModel.create(product)
                         showDialog = false
                     },
-                    onUpdate = { task ->
-                        productViewModel.update(task)
+                    onUpdate = { product ->
+                        productViewModel.update(product)
                         showDialog = false
                     },
                     onDismiss = { showDialog = false }

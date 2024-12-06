@@ -1,5 +1,6 @@
 package com.dikin.assignment4.retrofit
 
+import android.util.Log
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 
@@ -12,22 +13,18 @@ class ProductRepository(
 
     suspend fun getAll(): ApiResponse<List<Product>> {
         return try {
-            val products = productService.getAll()
-            productDao.insertAll(products)
-            ApiResponse.Success(products)
+            val productList = productService.getAll()
+            productDao.insertAll(productList.products)
+            ApiResponse.Success(productList.products)
         } catch (e: Exception) {
             val cachedProducts = cachedProducts.firstOrNull()
             if (!cachedProducts.isNullOrEmpty()) {
                 ApiResponse.Success(cachedProducts)
             } else {
+                Log.e("PRODUCTS", e.message, e)
                 ApiResponse.Error("Failed to get tasks", e)
             }
         }
-    }
-
-    suspend fun syncTasks() {
-        val tasks = productService.getAll()
-        productDao.insertAll(tasks)
     }
 
     suspend fun create(product: Product) {

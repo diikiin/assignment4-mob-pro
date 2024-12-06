@@ -31,10 +31,6 @@ class ProductViewModel(application: Application) : AndroidViewModel(application)
         _productsState.value = repository.getAll()
     }
 
-    fun syncTasks() = viewModelScope.launch {
-        repository.syncTasks()
-    }
-
     fun create(product: Product) = viewModelScope.launch {
         repository.create(product)
     }

@@ -9,18 +9,15 @@ import retrofit2.http.Path
 
 interface ProductService {
 
-    @GET("products")
-    suspend fun getAll(): List<Product>
+    @GET("/products")
+    suspend fun getAll(): ProductList
 
-    @GET("products/{id}")
-    suspend fun getById(@Path("id") id: Int)
-
-    @POST("products")
+    @POST("/products/add")
     suspend fun create(@Body product: Product): Product
 
-    @PUT("products/{id}")
+    @PUT("/products/{id}")
     suspend fun update(@Path("id") id: Int, @Body product: Product): Product
 
-    @DELETE("products/{id}")
+    @DELETE("/products/{id}")
     suspend fun delete(@Path("id") id: Int)
 }
